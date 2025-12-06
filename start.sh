@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "Running first-time EMO model setup..."
+echo "👉 Setting up EMO models..."
 python emo/download_models.py
 
-echo "Starting Dave AI Clone..."
+echo "🚀 Starting Dave AI Clone..."
 python davesaiclone.py
