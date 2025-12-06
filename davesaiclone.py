@@ -1,56 +1,65 @@
-# Dave's AI Clone Engine - Backend Skeleton (Working)
+import os
+import torch
+import gradio as gr
+from emo.models import EMO
+from emo.utils import load_audio, load_image, save_video
 
-from fastapi import FastAPI, File, UploadFile
-import uuid, os, shutil
+# Paths
+MODEL_DIR = "models/emo/checkpoints"
+CONFIG_DIR = "models/emo/configs"
 
-app = FastAPI()
+MODEL_PATH = os.path.join(MODEL_DIR, "emo.pth")
+CONFIG_PATH = os.path.join(CONFIG_DIR, "emo_config.yaml")
 
-# Ensure folders exist
-os.makedirs("input", exist_ok=True)
-os.makedirs("output", exist_ok=True)
+# Load EMO model
+def load_emo_model():
+    print("Loading EMO model...")
+    model = EMO(config_path=CONFIG_PATH)
+    model.load_state_dict(torch.load(MODEL_PATH, map_location="cpu"))
+    model.eval()
+    print("EMO model loaded.")
+    return model
 
-@app.get("/")
-def home():
-    return {"status": "Backend running"}
+emo_model = None
 
-@app.post("/start")
-async def start(face: UploadFile = File(...), audio: UploadFile = File(...), engine: str = "wav2lip"):
-    job_id = str(uuid.uuid4())
-    job_input = f"input/{job_id}"
-    job_output = f"output/{job_id}"
-    os.makedirs(job_input, exist_ok=True)
-    os.makedirs(job_output, exist_ok=True)
 
-    face_path = f"{job_input}/face.png"
-    audio_path = f"{job_input}/audio.wav"
+def generate_talking_video(image_file, audio_file):
+    global emo_model
 
-    # Save inputs
-    with open(face_path, "wb") as f:
-        f.write(await face.read())
+    # Lazy-load model
+    if emo_model is None:
+        emo_model = load_emo_model()
 
-    with open(audio_path, "wb") as f:
-        f.write(await audio.read())
+    # Load inputs
+    img = load_image(image_file)
+    audio = load_audio(audio_file)
 
-    # TODO: Insert your AI model code here
-    # Example:
-    # run_wav2lip(face_path, audio_path, f"{job_output}/result.mp4")
+    print("Generating video...")
 
-    # PLACEHOLDER: no model yet
-    shutil.copy("placeholder.mp4", f"{job_output}/result.mp4")
+    # EMO inference
+    output = emo_model.generate(img, audio)
 
-    return {"job_id": job_id}
+    output_path = "output.mp4"
+    save_video(output, output_path)
 
-@app.get("/status/{job_id}")
-def status(job_id: str):
-    result_path = f"output/{job_id}/result.mp4"
-    if os.path.exists(result_path):
-        return {"status": "done"}
-    return {"status": "processing"}
+    print("Video created:", output_path)
+    return output_path
 
-@app.get("/download/{job_id}")
-def download(job_id: str):
-    result_path = f"output/{job_id}/result.mp4"
-    if not os.path.exists(result_path):
-        return {"error": "not ready"}
 
-    return {"download_url": f"/output/{job_id}/result.mp4"}
+# Gradio Interface
+ui = gr.Interface(
+    fn=generate_talking_video,
+    inputs=[
+        gr.Image(type="filepath", label="Upload a photo of Dave"),
+        gr.Audio(type="filepath", label="Upload audio of Dave speaking")
+    ],
+    outputs=[
+        gr.Video(label="Generated Dave AI Video")
+    ],
+    title="Dave AI Clone — EMO Edition",
+    description="Upload 1 image + 1 audio file. EMO will generate a talking video of Dave."
+)
+
+if __name__ == "__main__":
+    ui.launch(server_name="0.0.0.0", server_port=7860)
+
