@@ -7,17 +7,15 @@ from io import BytesIO
 os.makedirs("models/emo/checkpoints", exist_ok=True)
 os.makedirs("models/emo/configs", exist_ok=True)
 
-# EMO official model archive URL (this endpoint still works)
 MODEL_ZIP_URL = "https://github.com/tnq177/emo/releases/download/v1.0/emo_models.zip"
 
-print("Downloading EMO models...")
+print("🔽 Downloading EMO model package...")
 
 response = requests.get(MODEL_ZIP_URL)
 if response.status_code != 200:
-    raise Exception(f"Failed to download EMO model zip: {response.status_code}")
+    raise Exception(f"Failed to download EMO model zip: HTTP {response.status_code}")
 
-print("Extracting models...")
+print("📦 Extracting model files...")
 zipfile.ZipFile(BytesIO(response.content)).extractall("models/emo")
 
-print("EMO model setup complete.")
-
+print("✅ EMO model setup complete.")
